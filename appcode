@@ -1,0 +1,40 @@
+require 'rbnacl'
+require 'base64'
+
+class SecureChat
+  def initialize
+    @private_key = RbNaCl::PrivateKey.generate
+    @public_key = @private_key.public_key
+  end
+
+  def encrypt(message, recipient_public_key)
+    box = RbNaCl::Box.new(recipient_public_key, @private_key)
+    nonce = RbNaCl::Random.random_bytes(box.nonce_bytes)
+    encrypted_message = box.encrypt(nonce, message)
+    Base64.strict_encode64(nonce + encrypted_message)
+  end
+
+  def decrypt(encrypted_message, sender_public_key)
+    box = RbNaCl::Box.new(sender_public_key, @private_key)
+    decoded_message = Base64.strict_decode64(encrypted_message)
+    nonce = decoded_message[0...box.nonce_bytes]
+    encrypted_content = decoded_message[box.nonce_bytes..-1]
+    box.decrypt(nonce, encrypted_content)
+  end
+end
+
+# Example Usage:
+
+alice = SecureChat.new
+bob = SecureChat.new
+
+# Alice sends a message to Bob
+message = "Hello, Bob!"
+encrypted_message = alice.encrypt(message, bob.public_key)
+decrypted_message = bob.decrypt(encrypted_message, alice.public_key)
+
+puts "Original message: #{message}"
+puts "Encrypted message: #{encrypted_message}"
+puts "Decrypted message: #{decrypted_message}"
+
+#The above example is desmonstration of one message this occurs every single time.
